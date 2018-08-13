@@ -11,8 +11,6 @@ const actors = [];
 let player;
 
 export function init () {
-  palt(14, true);
-
   player = createActor({
     type: "player",
     x: 60,
