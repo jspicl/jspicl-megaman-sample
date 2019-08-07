@@ -1,31 +1,25 @@
-import { checkForCollisions } from "./physics";
-import { updateAnimation } from "./animation";
 import { createActor } from "./factories";
 import { CELL_SIZE, DIRECTION_RIGHT } from "./constants";
 import { roundToNearestCell } from "./utils";
-import { clearLog, clearDebugRender, getDebugRender } from "./debug";
 import * as SPRITES from "./sprites";
 import * as STATES from "./states";
+import { clearLog, clearDebugRender } from "./debug";
 
 const actors = [];
 let player;
 
 export function init () {
   player = createActor({
-    type: "player",
+    updateState: STATES.player,
     x: 60,
     y: 56,
     direction: DIRECTION_RIGHT,
     sprites: SPRITES.megaman,
-    moveVelocity: 0.7,
+    moveVelocity: 0.8,
     jumpVelocity: 2
   });
 
   actors.push(player);
-}
-
-function handleState (actor, elapsedTime) {
-  STATES[actor.type](actor, elapsedTime);
 }
 
 export function update (elapsedTime) {
@@ -33,14 +27,12 @@ export function update (elapsedTime) {
   clearDebugRender();
 
   actors.forEach(actor => {
-    handleState(actor, elapsedTime);
-    checkForCollisions(actor, elapsedTime);
-    updateAnimation(actor, elapsedTime);
+    actor.updateState(actor, elapsedTime);
   });
 }
 
 function renderActor (actor) {
-  const sprite = actor.current;
+  const sprite = actor.currentAnimation;
 
   sspr(
     (sprite.index + Math.floor(actor.cursor) * sprite.widthUnits) % 16 * CELL_SIZE,
@@ -54,9 +46,11 @@ function renderActor (actor) {
     actor.direction === DIRECTION_RIGHT);
 }
 
+let cameraX = 0;
+
 export function draw () {
-  const cameraX = player.x - 56; // 56 = screen width / 2 - playerWidth / 2
-  const cameraY = -34;
+  cameraX = Math.max(player.x - 60, cameraX);
+  const cameraY = -40;
 
   cls();
   camera(cameraX, cameraY);
@@ -73,6 +67,4 @@ export function draw () {
 
   // Render players and enemies
   actors.forEach(renderActor);
-
-  getDebugRender().map(c => c());
 }

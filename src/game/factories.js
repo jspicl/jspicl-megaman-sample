@@ -9,11 +9,11 @@ export function createActor (args) {
     moveAcceleration: 0,
     moveVelocity: 0,
     jumpVelocity: 0,
-    jumpTime: 0,
     jumpDuration: 0,
     airDuration: 0,
     gravityModifier: 1,
     scale: 1,
+    currentAnimation: args.sprites.default,
     cursor: 0,
     current: args.sprites.default
   }, args);
