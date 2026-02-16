@@ -1,5 +1,47 @@
-import { CELL_SIZE } from "./constants";
+import { CELL_SIZE, TERMINAL_VELOCITY, GRAVITY } from "./constants";
 
-export function roundToNearestCell (value) {
+let counter = 0;
+export function generateUniqueId() {
+  counter = (counter + 1) % 100;
+  return counter;
+}
+
+export function roundToNearestCell(value) {
   return Math.floor(value / CELL_SIZE);
+}
+
+export function lerp(from, to, elapsedTime) {
+  return (1 - elapsedTime) * from + elapsedTime * to;
+}
+
+export function clamp(value, min, max) {
+  if (value < min) {
+    return min;
+  }
+
+  if (value > max) {
+    return max;
+  }
+
+  return value;
+}
+
+export function deadZone(value, threshold) {
+  return Math.abs(value) <= threshold ? 0 : value;
+}
+
+export function resetMomentum(actor) {
+  actor.jumpDuration = 0;
+  actor.yVelocity = 0;
+  actor.xVelocity = 0;
+  // actor.targetXVelocity = 0;
+}
+
+export function updatePositionBasedOnMotion(actor, elapsedTime) {
+  actor.yVelocity = Math.min(TERMINAL_VELOCITY, actor.yVelocity + GRAVITY);
+
+  actor.previousY = actor.y;
+  actor.previousX = actor.x;
+  actor.x += actor.xVelocity * elapsedTime;
+  actor.y += actor.yVelocity * elapsedTime;
 }

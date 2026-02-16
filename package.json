@@ -2,28 +2,22 @@
   "name": "jspicl-megaman-sample",
   "version": "1.0.0",
   "repository": {
-    "url": "https://github.com/AgronKabashi/jspicl-megaman-sample"
+    "url": "https://github.com/jspicl/jspicl-megaman-sample"
   },
+  "type": "module",
   "description": "A very simplistic MegaMan game build for PICO-8 and written in JavaScript",
   "scripts": {
     "restore-cart": "cross-env copyfiles game.p8 build",
-    "prebuild": "npm run restore-cart -- -s",
-    "build": "jspicl-cli --input src/index.js --output build/game.p8 --spritesheetImagePath spritesheet.png --cartridgePath build/game.p8",
-    "start": "npm run build -s -- --watch --jsOutput --luaOutput"
+    "prebuild": "yarn restore-cart -s",
+    "build": "jspicl src/index.js build/game.p8 -c ./jspicl.config.js",
+    "start": "yarn build --watch"
   },
-  "eslintIgnore": [
-    "build"
-  ],
   "author": "Agron Kabashi",
   "license": "MIT",
   "devDependencies": {
-    "@agronkabashi/eslint-config": "^1.1.0",
-    "babel-core": "^6.26.3",
-    "babel-eslint": "^10.0.2",
-    "chokidar": "^3.0.2",
-    "copyfiles": "^2.1.1",
-    "cross-env": "^5.2.0",
-    "eslint": "^6.1.0",
-    "jspicl-cli": "^0.2.0"
-  }
+    "@jspicl/cli": "4.0.0",
+    "copyfiles": "^2.4.1",
+    "cross-env": "^10.1.0"
+  },
+  "packageManager": "yarn@4.12.0"
 }

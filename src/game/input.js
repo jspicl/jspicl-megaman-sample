@@ -1,4 +1,4 @@
-export function getInput () {
+export function getInput() {
   return {
     leftPressed: btn(0, 0),
     rightPressed: btn(1, 0),
@@ -6,6 +6,6 @@ export function getInput () {
     downPressed: btn(3, 0),
     jumpPressed: !btn(3, 0) && btn(4, 0),
     dashPressed: btn(3, 0) && btn(4, 0),
-    shootPressed: btn(5, 0)
+    shootPressed: btn(5, 0),
   };
 }

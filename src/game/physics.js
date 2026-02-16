@@ -1,75 +1,116 @@
-import { CELL_SIZE, GRAVITY, TERMINAL_VELOCITY } from "./constants";
-import { roundToNearestCell } from "./utils";
+import { CELL_SIZE } from "./constants";
+import { roundToNearestCell, lerp } from "./utils";
 
-function isSolid (x, y) {
-  return fget(mget(x, y), 0);
+function getCellState(x, y, flag) {
+  return fget(mget(x, y), flag);
+}
+function isSolid(x, y) {
+  return getCellState(x, y, 0);
 }
 
-function isPlatform (x, y) {
-  return fget(mget(x, y), 1);
+function isPlatform(x, y) {
+  return getCellState(x, y, 1);
 }
 
-export function updatePositionBasedOnMotion (actor) {
-  actor.previousY = actor.y;
-  actor.previousX = actor.x;
-  actor.x += actor.xVelocity * actor.direction;
-  actor.yVelocity = Math.max(-TERMINAL_VELOCITY, actor.yVelocity - GRAVITY * actor.gravityModifier);
-  actor.y -= actor.yVelocity;
+function isLethal(x, y) {
+  return getCellState(x, y, 7);
 }
 
-export function checkForCollisionsAgainstEnvironment (actor) {
-  const width = actor.currentAnimation.widthUnits * CELL_SIZE;
-  const height = actor.currentAnimation.heightUnits * CELL_SIZE;
-  const { x: actorX, y: actorY } = actor;
+export function checkForCollisionsAgainstActors(actors, collisionActions) {
+  const alreadyExecutedCollisions = {};
 
-  let x = roundToNearestCell(actorX);
-  let y = roundToNearestCell(actorY);
-  const x2 = roundToNearestCell(actorX + width - 1);
-  const y2 = roundToNearestCell(actorY + height);
-  const topBottomMarkerX = roundToNearestCell(actorX + width / 4);
-  const topBottomMarkerX2 = roundToNearestCell(actorX - 1 + width / 4 * 3);
-  const sideMarkerY1 = roundToNearestCell(actorY + height / 4 + 1);
-  const sideMarkerY2 = roundToNearestCell(actorY + height / 4 * 3 - 1);
+  // Very naive and non performant collision detection
+  actors.forEach((actor) => {
+    actors.forEach((target) => {
+      const id =
+        Math.min(actor.id, target.id) * 1000 + Math.max(actor.id, target.id);
+      if (
+        !actor.allowCollisions ||
+        !target.allowCollisions ||
+        actor === target ||
+        alreadyExecutedCollisions[id]
+      ) {
+        return;
+      }
+
+      alreadyExecutedCollisions[id] = true;
+
+      if (
+        actor.x + 1 < target.x + target.currentAnimation.width - 1 &&
+        actor.x + actor.currentAnimation.width - 1 > target.x + 1 &&
+        actor.y + 1 < target.y + target.currentAnimation.height - 1 &&
+        actor.y + actor.currentAnimation.height - 1 > target.y + 1
+      ) {
+        const type = [actor.type, target.type].sort().join("vs");
+        const colliderAction = collisionActions[type];
+        if (colliderAction) {
+          colliderAction(actor, target);
+        }
+      }
+    });
+  });
+}
+
+export function checkForCollisionsAgainstEnvironment(actor) {
   const collisionInfo = {};
+  const { width, height } = actor.currentAnimation;
+  const { x, y } = actor;
 
-  const isCollidingLeft = isSolid(x, sideMarkerY1) || isSolid(x, sideMarkerY2);
+  let left = roundToNearestCell(x);
+  let right = roundToNearestCell(x + width);
+  let top = roundToNearestCell(y - height);
+  let bottom = roundToNearestCell(y);
+  const verticalCollisionMarkerLeft = roundToNearestCell(x + 4);
+  const verticalCollisionMarkerRight = roundToNearestCell(x + width - 4);
+  const sideCollisionMarkerTop = roundToNearestCell(y - 4);
+  const sideCollisionMarkerBottom = roundToNearestCell(y - height + 4);
+
+  if (
+    isLethal(left, top) ||
+    isLethal(left, bottom) ||
+    isLethal(right, top) ||
+    isLethal(right, bottom)
+  ) {
+    collisionInfo.lethal = true;
+    return collisionInfo;
+  }
+
+  const isCollidingLeft =
+    isSolid(left, sideCollisionMarkerBottom) ||
+    isSolid(left, sideCollisionMarkerTop);
   if (isCollidingLeft) {
     collisionInfo.left = true;
-    actor.x = x * CELL_SIZE + CELL_SIZE;
-    x++;
+    actor.x = left * CELL_SIZE + CELL_SIZE;
+    left++;
+    right++;
   }
 
-  const isCollidingRight = isSolid(x2, sideMarkerY1) || isSolid(x2, sideMarkerY2);
+  const isCollidingRight =
+    isSolid(right, sideCollisionMarkerBottom) ||
+    isSolid(right, sideCollisionMarkerTop);
   if (isCollidingRight) {
     collisionInfo.right = true;
-    actor.x = x * CELL_SIZE;
+    actor.x = left * CELL_SIZE;
+    right--;
   }
 
-  const isCollidingTopLeft = isSolid(topBottomMarkerX, y);
-  const isCollidingTopRight = isSolid(topBottomMarkerX2, y);
-  if (isCollidingTopLeft || isCollidingTopRight) {
-    const mapX = isCollidingTopLeft ? topBottomMarkerX : topBottomMarkerX2;
-    const mapY = y;
-
-    collisionInfo.top = {
-      type: mget(mapX, mapY),
-      mapX,
-      mapY
-    };
-    actor.y = y * CELL_SIZE + CELL_SIZE;
-    y++;
+  const isCollidingTop =
+    isSolid(verticalCollisionMarkerLeft, top) ||
+    isSolid(verticalCollisionMarkerRight, top);
+  if (isCollidingTop) {
+    collisionInfo.top = true;
+    actor.y = (top + 1) * CELL_SIZE + height;
+    top++;
   }
 
-  const isCollidingBottom = isSolid(topBottomMarkerX, y2) || isSolid(topBottomMarkerX2, y2);
-  const isCollidingWithPlatform = isPlatform(topBottomMarkerX, y2) || isPlatform(topBottomMarkerX2, y2);
-  const isPreviousLocationAbovePlatformAndNotSolid = !isSolid(x, roundToNearestCell(actor.previousY + height - 1));
-  const isFalling = actor.yVelocity <= -GRAVITY;
-
-  if (isCollidingBottom
-    || isCollidingWithPlatform && isPreviousLocationAbovePlatformAndNotSolid && isFalling) {
+  const isCollidingBottom =
+    isSolid(verticalCollisionMarkerLeft, bottom) ||
+    isSolid(verticalCollisionMarkerRight, bottom);
+  if (isCollidingBottom) {
     collisionInfo.ground = true;
-    collisionInfo.platform = isCollidingWithPlatform;
-    actor.y = y2 * CELL_SIZE - height;
+    actor.y = bottom * CELL_SIZE;
+    bottom--;
+    top--;
   }
 
   return collisionInfo;

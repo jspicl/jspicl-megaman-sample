@@ -1,69 +1,64 @@
-import { createActor } from "./factories";
-import { CELL_SIZE, DIRECTION_RIGHT } from "./constants";
-import { roundToNearestCell } from "./utils";
-import * as SPRITES from "./sprites";
-import * as STATES from "./states";
-import { clearLog, clearDebugRender } from "./debug";
+import { DIRECTION_RIGHT } from "./constants";
+import { createPlayer, createPlayerCamera } from "./actorFactories";
+import { checkForCollisionsAgainstActors } from "./physics";
+import { renderMap } from "./render/render-map";
 
-const actors = [];
+let actors;
 let player;
+let camera;
 
-export function init () {
-  player = createActor({
-    updateState: STATES.player,
-    x: 60,
-    y: 56,
-    direction: DIRECTION_RIGHT,
-    sprites: SPRITES.megaman,
-    moveVelocity: 0.8,
-    jumpVelocity: 2
-  });
+const collisionActions = {};
+
+function reset() {
+  actors = [];
+  camera = createPlayerCamera();
+  player = createPlayer(60, 56);
 
   actors.push(player);
+  actors.push(camera);
+
+  actors.camera = camera;
+  actors.player = player;
 }
 
-export function update (elapsedTime) {
-  clearLog();
-  clearDebugRender();
-
-  actors.forEach(actor => {
-    actor.updateState(actor, elapsedTime);
-  });
+export function init() {
+  reset();
 }
 
-function renderActor (actor) {
-  const sprite = actor.currentAnimation;
-
-  sspr(
-    (sprite.index + Math.floor(actor.cursor) * sprite.widthUnits) % 16 * CELL_SIZE,
-    Math.floor(sprite.index / 16) * CELL_SIZE,
-    sprite.widthUnits * CELL_SIZE,
-    sprite.heightUnits * CELL_SIZE,
-    actor.x,
-    actor.y,
-    actor.scale * sprite.widthUnits * CELL_SIZE,
-    actor.scale * sprite.heightUnits * CELL_SIZE,
-    actor.direction === DIRECTION_RIGHT);
-}
-
-let cameraX = 0;
-
-export function draw () {
-  cameraX = Math.max(player.x - 60, cameraX);
-  const cameraY = -40;
-
+export function update(elapsedTime) {
   cls();
-  camera(cameraX, cameraY);
+  if (player.status === "dead") {
+    player.updateState(player, actors, elapsedTime);
+    if (player.reset) {
+      reset();
+    }
+  } else {
+    actors.forEach((actor) => actor.updateState(actor, actors, elapsedTime));
+    checkForCollisionsAgainstActors(actors, collisionActions);
+  }
+}
 
-  // Draw the proper map region
-  const xCell = roundToNearestCell(cameraX);
-  const yCell = roundToNearestCell(cameraY);
-  map(
-    xCell,
-    yCell,
-    xCell * CELL_SIZE,
-    yCell * CELL_SIZE,
-    17, 17);
+function renderActor(actor) {
+  const { currentAnimation, allowRendering, currentAnimationFrame } = actor;
+
+  if (!allowRendering) {
+    return;
+  }
+
+  spr(
+    currentAnimation.index +
+      Math.floor(currentAnimationFrame) * currentAnimation.widthCells,
+    actor.x - camera.x,
+    actor.y - currentAnimation.height - camera.y,
+    currentAnimation.widthCells,
+    currentAnimation.heightCells,
+    actor.direction === DIRECTION_RIGHT
+  );
+}
+
+export function draw() {
+  // cls();
+  renderMap(camera.x, camera.y);
 
   // Render players and enemies
   actors.forEach(renderActor);
