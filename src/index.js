@@ -1,6 +1,5 @@
 import { init, draw, update } from "./game";
 
-/* eslint-disable no-underscore-dangle */
 function _init() {
   cls();
   init();
